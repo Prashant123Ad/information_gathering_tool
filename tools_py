@@ -1,6 +1,9 @@
 import os
 import subprocess
 import threading
+import urllib.request
+import zipfile
+import shutil
 
 # List of required tools and their corresponding package names
 tools = {
@@ -26,6 +29,40 @@ def install_tool(tool_name, package_name):
         print(f"    ❌ {tool_name} is missing. Installing...")
         os.system(f"sudo apt install -y {package_name}")
 
+def install_sublist3r():
+    """Automatically download and install Sublist3r"""
+    print("[+] Checking Sublist3r...")
+    if is_tool_installed("sublist3r") or os.path.exists("/usr/local/bin/sublist3r"):
+        print("    ✅ Sublist3r already installed.")
+        return
+
+    print("    ❌ Sublist3r not found. Downloading and installing...")
+
+    # Download Sublist3r zip
+    url = "https://github.com/aboul3la/Sublist3r/archive/refs/heads/master.zip"
+    zip_file = "sublist3r.zip"
+    urllib.request.urlretrieve(url, zip_file)
+
+    # Extract it
+    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        zip_ref.extractall(".")
+
+    os.remove(zip_file)
+
+    # Rename and move the folder
+    if os.path.exists("Sublist3r"):
+        shutil.rmtree("Sublist3r")
+    os.rename("Sublist3r-master", "Sublist3r")
+
+    # Install Python dependencies
+    os.system("pip3 install -r Sublist3r/requirements.txt")
+
+    # Move script to /usr/local/bin and make executable
+    shutil.copy("Sublist3r/sublist3r.py", "/usr/local/bin/sublist3r")
+    os.chmod("/usr/local/bin/sublist3r", 0o755)
+
+    print("    ✅ Sublist3r installed successfully! You can run it using: sublist3r -d example.com")
+
 def remove_unwanted_packages():
     """Remove unused packages and clean up"""
     print("[+] Removing unnecessary packages...")
@@ -43,28 +80,25 @@ def install_tools_parallel():
         thread = threading.Thread(target=install_tool, args=(tool, package))
         threads.append(thread)
         thread.start()
-    
-    # Wait for all threads to finish
+
     for thread in threads:
         thread.join()
 
 def main():
-    """Install required tools and clean up"""
+    """Main installer logic"""
     print("========================================")
-    print("   Automatic Tool Installer for Recon   ")
+    print("   Automatic Recon Tool Installer       ")
     print("========================================")
 
-    update_system()  # Update system
-
-    install_tools_parallel()  # Install tools in parallel
-
-    remove_unwanted_packages()  # Auto-remove unnecessary packages
+    update_system()
+    install_tools_parallel()
+    install_sublist3r()
+    remove_unwanted_packages()
 
     print("========================================")
-    print("✅ All required tools are installed!")
-    print("✅ Unused packages have been removed.")
+    print("✅ All tools installed successfully.")
+    print("✅ System cleaned up.")
     print("========================================")
 
 if __name__ == "__main__":
     main()
-
